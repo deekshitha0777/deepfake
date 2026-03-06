@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Result — DeepScan{% endblock %}
+{% block content %}
+<div class="result-page">
+  <a href="{{ url_for('dashboard') }}" class="back-link">← Back to Dashboard</a>
+
+  <div class="result-card {{ 'res-fake' if 'AI' in analysis.result else 'res-real' if 'Real' in analysis.result else 'res-error' }}">
+    <div class="res-header">
+      <div class="res-badge">ANALYSIS COMPLETE</div>
+      {% if 'AI' in analysis.result %}
+        <div class="res-verdict fake">⚠ AI-Generated / Deepfake</div>
+        <p class="res-summary">This image appears to be <strong>synthetically created</strong> by artificial intelligence. It may be a deepfake or digitally generated content.</p>
+      {% elif 'Real' in analysis.result %}
+        <div class="res-verdict real">✓ Real Photograph</div>
+        <p class="res-summary">This image appears to be an <strong>authentic photograph</strong> taken by a real camera. No significant signs of AI generation were detected.</p>
+      {% else %}
+        <div class="res-verdict error">⚠ Analysis Error</div>
+        <p class="res-summary">The analysis could not be completed. See details below.</p>
+      {% endif %}
+    </div>
+
+    <div class="res-body">
+      <div class="res-image-wrap">
+        <img src="{{ url_for('static', filename='..//uploads/' + analysis.image_path) }}" alt="Analyzed image"
+             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22><rect width=%22200%22 height=%22200%22 fill=%22%23111%22/><text y=%22110%22 x=%2260%22 font-size=%2250%22>🖼</text></svg>'">
+      </div>
+      <div class="res-details">
+        <div class="detail-row">
+          <span class="dr-label">Verdict</span>
+          <span class="dr-value">{{ analysis.result }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="dr-label">Confidence</span>
+          <span class="dr-value conf-{{ (analysis.confidence or 'na')|lower }}">{{ analysis.confidence or 'N/A' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="dr-label">Analysis Time</span>
+          <span class="dr-value">{{ analysis.uploaded_at[:16].replace('T',' ') }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="dr-label">Image File</span>
+          <span class="dr-value mono">{{ analysis.image_path.split('_', 2)[-1] if '_' in analysis.image_path else analysis.image_path }}</span>
+        </div>
+        {% if analysis.detail %}
+        <div class="detail-reasoning">
+          <span class="dr-label">AI Reasoning</span>
+          <p>{{ analysis.detail }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="res-footer">
+      <a href="{{ url_for('dashboard') }}" class="btn-primary">Scan Another Image</a>
+      <form method="POST" action="{{ url_for('delete_analysis', analysis_id=analysis.id) }}" style="display:inline">
+        <button type="submit" class="btn-ghost" onclick="return confirm('Delete this scan?')">Delete Record</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Disclaimer:</strong> DeepScan provides AI-based analysis as a tool to aid human judgment. 
+    Results are not 100% guaranteed. Always use critical thinking when evaluating image authenticity.
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}DeepScan — Detect AI-Generated Images{% endblock %}
+{% block content %}
+
+<section class="hero">
+  <div class="hero-bg">
+    <div class="grid-overlay"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">AI FORENSICS TOOL</div>
+    <h1 class="hero-title">Can you trust<br>what you see?</h1>
+    <p class="hero-sub">DeepScan uses Google's Gemini AI to detect synthetic, AI-generated, and deepfake images with pinpoint accuracy.</p>
+    <div class="hero-cta">
+      <a href="{{ url_for('register') }}" class="btn-primary">Start Scanning Free</a>
+      <a href="{{ url_for('login') }}" class="btn-ghost">Already have an account →</a>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="scan-frame">
+      <div class="scan-line"></div>
+      <div class="scan-corners">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="scan-icon">⬡</div>
+      <div class="scan-label">ANALYZING...</div>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feat-icon">⚡</div>
+      <h3>Instant Analysis</h3>
+      <p>Upload any image and get a verdict in seconds. No waiting, no queues.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon">🔬</div>
+      <h3>Gemini AI Engine</h3>
+      <p>Powered by Google's Gemini multimodal AI for state-of-the-art image forensics.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon">📊</div>
+      <h3>Confidence Score</h3>
+      <p>Every result includes a confidence level and detailed reasoning from the AI.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feat-icon">🗂️</div>
+      <h3>Full History</h3>
+      <p>All your scans are saved. Review and compare past analyses anytime.</p>
+    </div>
+  </div>
+</section>
+
+<section class="how-it-works">
+  <h2>How it works</h2>
+  <div class="steps">
+    <div class="step"><span class="step-num">01</span><p>Create a free account</p></div>
+    <div class="step-arrow">→</div>
+    <div class="step"><span class="step-num">02</span><p>Upload any image (JPG, PNG, WEBP...)</p></div>
+    <div class="step-arrow">→</div>
+    <div class="step"><span class="step-num">03</span><p>Get AI verdict instantly</p></div>
+  </div>
+</section>
+{% endblock %}
