@@ -74,7 +74,7 @@ def analyze_image(image_path):
                 'https://api.sightengine.com/1.0/check.json',
                 files={'media': f},
                 data={
-                    'models': 'ai-generated',
+                    'models': 'genai',
                     'api_user': api_user,
                     'api_secret': api_secret
                 }
