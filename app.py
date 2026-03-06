@@ -66,147 +66,43 @@ def login_required(f):
 # ✅ FIX 2: Completely rewritten analyze_image with a much more reliable approach
 def analyze_image(image_path):
     try:
-        import cv2
-        import numpy as np
-        from PIL import Image as PILImage
-        import math
-
-        img_pil = PILImage.open(image_path).convert('RGB')
-        img_array = np.array(img_pil)
-        img = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-
-        # ── Resize for consistent analysis ──
-        img_resized = cv2.resize(img, (512, 512))
-        gray = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
-
-        suspicious_signals = []
-        real_signals = []
-
-        # ── 1. Error Level Analysis (ELA) ──
-        # AI images often have suspiciously uniform error levels
-        temp_path = image_path + "_temp_ela.jpg"
-        PILImage.fromarray(cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)).save(
-            temp_path, 'JPEG', quality=75)
-        compressed = cv2.imread(temp_path)
-        os.remove(temp_path)
-        ela = cv2.absdiff(img_resized, compressed).astype(np.float32)
-        ela_mean = np.mean(ela)
-        ela_std = np.std(ela)
-        ela_uniformity = ela_std / (ela_mean + 1e-6)
-
-        if ela_uniformity < 0.8:
-            suspicious_signals.append(f"ELA uniformity too smooth ({ela_uniformity:.2f})")
-        else:
-            real_signals.append(f"ELA variation normal ({ela_uniformity:.2f})")
-
-        # ── 2. Noise Pattern Analysis ──
-        # Real cameras have natural sensor noise; AI images are too clean or have fake noise
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        noise_map = cv2.absdiff(gray, blur).astype(np.float32)
-        noise_mean = np.mean(noise_map)
-        noise_std = np.std(noise_map)
-
-        if noise_mean < 3.5:
-            suspicious_signals.append(f"Too clean - no natural sensor noise ({noise_mean:.2f})")
-        elif noise_mean > 25:
-            suspicious_signals.append(f"Artificial noise pattern detected ({noise_mean:.2f})")
-        else:
-            real_signals.append(f"Natural noise level ({noise_mean:.2f})")
-
-        # ── 3. Frequency Domain Analysis (DCT) ──
-        # AI generators leave distinct frequency artifacts
-        dct = cv2.dct(np.float32(gray))
-        high_freq = dct[64:, 64:]
-        low_freq = dct[:64, :64]
-        freq_ratio = np.mean(np.abs(high_freq)) / (np.mean(np.abs(low_freq)) + 1e-6)
-
-        if freq_ratio < 0.01:
-            suspicious_signals.append(f"Missing high-frequency detail (ratio {freq_ratio:.4f})")
-        else:
-            real_signals.append(f"Healthy frequency distribution ({freq_ratio:.4f})")
-
-        # ── 4. Color Channel Correlation ──
-        # AI images often have unnaturally correlated RGB channels
-        r, g, b = img_resized[:,:,2], img_resized[:,:,1], img_resized[:,:,0]
-        rg_corr = np.corrcoef(r.flatten(), g.flatten())[0,1]
-        rb_corr = np.corrcoef(r.flatten(), b.flatten())[0,1]
-        avg_corr = (abs(rg_corr) + abs(rb_corr)) / 2
-
-        if avg_corr > 0.97:
-            suspicious_signals.append(f"Unnaturally high channel correlation ({avg_corr:.3f})")
-        else:
-            real_signals.append(f"Normal channel correlation ({avg_corr:.3f})")
-
-        # ── 5. Edge Consistency Analysis ──
-        # AI images often have overly smooth or perfectly consistent edges
-        edges = cv2.Canny(gray, 50, 150)
-        edge_density = np.mean(edges) / 255.0
-        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-
-        if laplacian_var < 50:
-            suspicious_signals.append(f"Over-smooth edges (sharpness: {laplacian_var:.1f})")
-        elif edge_density < 0.02:
-            suspicious_signals.append(f"Too few natural edges ({edge_density:.4f})")
-        else:
-            real_signals.append(f"Natural edge complexity ({laplacian_var:.1f})")
-
-        # ── 6. JPEG Artifact Consistency ──
-        # Real photos have consistent JPEG block artifacts; AI images often don't
-        h, w = gray.shape
-        block_vars = []
-        for i in range(0, min(h, 256), 8):
-            for j in range(0, min(w, 256), 8):
-                block = gray[i:i+8, j:j+8]
-                if block.shape == (8, 8):
-                    block_vars.append(np.var(block))
-        if block_vars:
-            block_consistency = np.std(block_vars) / (np.mean(block_vars) + 1e-6)
-            if block_consistency < 0.5:
-                suspicious_signals.append(f"Unnaturally uniform block structure ({block_consistency:.3f})")
+        import requests
+        api_user = os.environ.get('SIGHTENGINE_USER', '1386884004')
+        api_secret = os.environ.get('SIGHTENGINE_SECRET', '7TidexJ3WdN9v7pDrrA5WcLp34CAT9Ye')
+        with open(image_path, 'rb') as f:
+            response = requests.post(
+                'https://api.sightengine.com/1.0/check.json',
+                files={'media': f},
+                data={
+                    'models': 'ai-generated',
+                    'api_user': api_user,
+                    'api_secret': api_secret
+                }
+            )
+        result = response.json()
+        if result.get('status') == 'success':
+            ai_score = result.get('type', {}).get('ai_generated', 0)
+            ai_percent = round(ai_score * 100)
+            real_percent = 100 - ai_percent
+            if ai_score >= 0.7:
+                verdict = "AI-Generated / Deepfake"
+                confidence = ai_percent
+                details = f"Sightengine AI score: {ai_percent}% AI-generated"
+            elif ai_score >= 0.4:
+                verdict = "Possibly AI-Generated"
+                confidence = ai_percent
+                details = f"Sightengine AI score: {ai_percent}% AI-generated"
             else:
-                real_signals.append(f"Natural block variation ({block_consistency:.3f})")
-
-        # ── Final Decision ──
-        total_signals = len(suspicious_signals) + len(real_signals)
-        suspicious_count = len(suspicious_signals)
-        real_count = len(real_signals)
-
-        # Weighted scoring
-        if total_signals == 0:
-            verdict = "Unknown"
-            confidence = 50
-        elif suspicious_count >= 4:
-            verdict = "AI-Generated / Deepfake"
-            confidence = min(95, 60 + (suspicious_count * 7))
-        elif suspicious_count == 3:
-            verdict = "Likely AI-Generated"
-            confidence = min(85, 55 + (suspicious_count * 6))
-        elif suspicious_count == 2:
-            verdict = "Possibly AI-Generated"
-            confidence = 55
-        elif real_count >= 4:
-            verdict = "Likely Real Image"
-            confidence = min(92, 60 + (real_count * 6))
+                verdict = "Real Image"
+                confidence = real_percent
+                details = f"Sightengine AI score: {ai_percent}% AI-generated, likely real"
         else:
-            verdict = "Real Image"
-            confidence = min(88, 65 + (real_count * 5))
-
-        details = "🔴 Suspicious signals: " + ("; ".join(suspicious_signals) if suspicious_signals else "None")
-        details += " | ✅ Real signals: " + ("; ".join(real_signals) if real_signals else "None")
-
-        return {
-            "verdict": verdict,
-            "confidence": confidence,
-            "details": details
-        }
-
+            verdict = "Error"
+            confidence = 0
+            details = f"API error: {result.get('error', {}).get('message', 'Unknown error')}"
+        return {"verdict": verdict, "confidence": confidence, "details": details}
     except Exception as e:
-        return {
-            "verdict": "Error",
-            "confidence": 0,
-            "details": f"Analysis failed: {str(e)}"
-        }
-
+        return {"verdict": "Error", "confidence": 0, "details": f"Analysis failed: {str(e)}"}
 
 @app.route('/')
 def index():

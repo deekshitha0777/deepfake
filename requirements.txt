@@ -4,5 +4,6 @@ pillow
 numpy
 opencv-python-headless
 gunicorn
+requests
 
 
