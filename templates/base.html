@@ -17,6 +17,8 @@
       <span class="nav-user">⬡ {{ session.username }}</span>
       <a href="{{ url_for('dashboard') }}" class="nav-btn">Dashboard</a>
       <a href="{{ url_for('logout') }}" class="nav-btn outline">Logout</a>
+      <a href="{{ url_for('check_link') }}">🔗 Link Checker</a>
+      <a href="{{ url_for('check_video') }}">🎬 Video Checker</a>
     {% else %}
       <a href="{{ url_for('login') }}" class="nav-btn outline">Login</a>
       <a href="{{ url_for('register') }}" class="nav-btn">Register</a>

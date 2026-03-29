@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block title %}Link Checker — DeepScan{% endblock %}
+{% block content %}
+<section class="auth-section" style="display:flex; justify-content:center; align-items:center; min-height:80vh;">
+  <div class="auth-card" style="max-width:600px; width:100%; margin:0 auto;">
+    <h1 class="auth-title">🔗 Fake Link Detector</h1>
+    <p class="auth-sub">Paste any URL to check if it's suspicious or a phishing link</p>
+
+    <form method="POST" action="{{ url_for('check_link') }}" class="auth-form">
+      <div class="form-group">
+        <label for="url">URL to Check</label>
+        <input type="text" id="url" name="url" placeholder="https://example.com" required>
+      </div>
+      <button type="submit" class="btn-primary">Analyse Link</button>
+    </form>
+
+    {% if result %}
+    <div class="result-box" style="margin-top:24px; padding:20px; border-radius:10px;
+      background: {{ '#ffe5e5' if result.is_suspicious else '#e5ffe8' }}; border: 2px solid
+      {{ '#e74c3c' if result.is_suspicious else '#27ae60' }}">
+
+      <h2 style="color: {{ '#e74c3c' if result.is_suspicious else '#27ae60' }}">
+        {{ '⚠️ Suspicious / Likely Fake' if result.is_suspicious else '✅ Appears Safe' }}
+      </h2>
+      <p><strong>Risk Score:</strong> {{ result.risk_score }} / 100</p>
+      <p><strong>Final URL:</strong> {{ result.final_url }}</p>
+
+      {% if result.flags %}
+      <ul style="margin-top:10px">
+        {% for flag in result.flags %}
+        <li>🚩 {{ flag }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

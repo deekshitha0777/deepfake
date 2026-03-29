@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Video Checker — DeepScan{% endblock %}
+{% block content %}
+<section class="auth-section" style="display:flex; justify-content:center; align-items:center; min-height:80vh;">
+  <div class="auth-card" style="max-width:600px; width:100%; margin:0 auto;">
+    <h1 class="auth-title">🎬 Fake Video Detector</h1>
+    <p class="auth-sub">Upload a video to check if it's a deepfake</p>
+
+    {% if error %}
+    <div style="color:#e74c3c; margin-bottom:12px">⚠️ {{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('check_video') }}"
+          enctype="multipart/form-data" class="auth-form">
+      <div class="form-group">
+        <label for="video">Upload Video (max 50MB)</label>
+        <input type="file" id="video" name="video" accept="video/*" required>
+      </div>
+      <button type="submit" class="btn-primary">Analyse Video</button>
+    </form>
+
+    {% if result %}
+    <div class="result-box" style="margin-top:24px; padding:20px; border-radius:10px;
+      background: {{ '#ffe5e5' if result.is_fake else '#e5ffe8' }}; border: 2px solid
+      {{ '#e74c3c' if result.is_fake else '#27ae60' }}">
+
+      <h2 style="color: {{ '#e74c3c' if result.is_fake else '#27ae60' }}">
+        {{ '⚠️ DEEPFAKE DETECTED' if result.is_fake else '✅ Appears REAL' }}
+      </h2>
+      <p><strong>Verdict:</strong> {{ result.verdict }}</p>
+      <p><strong>Fake Confidence:</strong> {{ result.confidence }}%</p>
+      <p><strong>Frames Analysed:</strong> {{ result.frames_analysed }}</p>
+      <p><strong>Video Duration:</strong> {{ result.duration_seconds }}s</p>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

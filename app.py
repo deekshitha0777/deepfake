@@ -4,11 +4,12 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from PIL import Image
 import numpy as np
+from url_scanner import check_url_safety
+from video_checker import load_model, analyse_video
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB for videos
 
-# ✅ FIX 1: Fixed secret key - set a permanent one, not random each restart
 app.secret_key = os.environ.get('SECRET_KEY', 'deepfake_detector_secret_key_2025_fixed')
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -16,7 +17,19 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+VIDEO_UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads', 'videos')
+ALLOWED_VIDEO_EXTENSIONS = {"mp4", "avi", "mov", "mkv", "webm"}
+os.makedirs(VIDEO_UPLOAD_FOLDER, exist_ok=True)
+
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'deepfake.db')
+
+# Load video model once at startup (won't crash if model not found)
+try:
+    video_model = load_model()
+    print("✅ Video model loaded successfully")
+except Exception as e:
+    video_model = None
+    print(f"⚠️ Video model not loaded: {e}")
 
 def get_db():
     db = sqlite3.connect(DB_PATH)
@@ -52,6 +65,9 @@ def hash_password(pw):
 def allowed_file(fn):
     return '.' in fn and fn.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def allowed_video(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+
 def login_required(f):
     from functools import wraps
     @wraps(f)
@@ -62,8 +78,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-# ✅ FIX 2: Completely rewritten analyze_image with a much more reliable approach
 def analyze_image(image_path):
     try:
         import requests
@@ -103,6 +117,10 @@ def analyze_image(image_path):
         return {"verdict": verdict, "confidence": confidence, "details": details}
     except Exception as e:
         return {"verdict": "Error", "confidence": 0, "details": f"Analysis failed: {str(e)}"}
+
+# ─────────────────────────────────────────────
+#  ROUTES
+# ─────────────────────────────────────────────
 
 @app.route('/')
 def index():
@@ -201,8 +219,53 @@ def delete_analysis(analysis_id):
     flash('Record deleted.','success')
     return redirect(url_for('dashboard'))
 
+# ─────────────────────────────────────────────
+#  LINK CHECKER ROUTE
+# ─────────────────────────────────────────────
 
-# ✅ FIX 3: host='0.0.0.0' so it works when deployed online
+@app.route('/check-link', methods=['GET', 'POST'])
+def check_link():
+    result = None
+    if request.method == 'POST':
+        url = request.form.get('url', '').strip()
+        if url:
+            result = check_url_safety(url)
+    return render_template('check_link.html', result=result)
+
+# ─────────────────────────────────────────────
+#  VIDEO CHECKER ROUTE
+# ─────────────────────────────────────────────
+
+@app.route('/check-video', methods=['GET', 'POST'])
+def check_video():
+    result = None
+    error = None
+    if video_model is None:
+        error = "Video detection model is not loaded yet. Please contact the admin."
+        return render_template('check_video.html', result=result, error=error)
+    if request.method == 'POST':
+        file = request.files.get('video')
+        if not file or file.filename == '':
+            error = "Please upload a video file."
+        elif not allowed_video(file.filename):
+            error = "Unsupported format. Use MP4, AVI, MOV, MKV, or WebM."
+        else:
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(VIDEO_UPLOAD_FOLDER, filename)
+            file.save(save_path)
+            try:
+                result = analyse_video(save_path, video_model)
+            except Exception as e:
+                error = f"Analysis failed: {str(e)}"
+            finally:
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+    return render_template('check_video.html', result=result, error=error)
+
+# ─────────────────────────────────────────────
+#  RUN — ALWAYS LAST
+# ─────────────────────────────────────────────
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
-    app.run(debug=False, port=port, host='0.0.0.0')
+    app.run(debug=True, port=port, host='0.0.0.0')
