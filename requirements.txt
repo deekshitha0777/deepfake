@@ -1,9 +1,7 @@
 flask
-werkzeug
+requests
+tldextract
+validators
 pillow
 numpy
 opencv-python-headless
-gunicorn
-requests
-
-
