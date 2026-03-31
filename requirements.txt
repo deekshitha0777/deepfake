@@ -5,3 +5,4 @@ validators
 pillow
 numpy
 opencv-python-headless
+gunicorn
